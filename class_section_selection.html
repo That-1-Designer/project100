@@ -117,6 +117,10 @@
       set(classSectionRef, true);
     }
 
+    function redirectToPage(pageUrl) {
+      window.location.href = pageUrl;
+    }
+
     // Check if user is logged in
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -128,10 +132,12 @@
           const selectedClassId = document.getElementById('classDropdown').value;
           const selectedSectionId = document.getElementById('sectionDropdown').value;
           saveUserSelection(userId, selectedClassId, selectedSectionId);
+          redirectToPage('main.html');
         });
       } else {
         // User is not logged in
         // Redirect to login page or display an error message
+        redirectToPage('login.html');
       }
     });
     
