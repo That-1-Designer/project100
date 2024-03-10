@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Class and Section Selection</title>
+  <link href="./style/output.css" rel="stylesheet"> 
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
+      authDomain: "project100percent-3dfe4.firebaseapp.com",
+      databaseURL: "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+      projectId: "project100percent-3dfe4",
+      storageBucket: "project100percent-3dfe4.appspot.com",
+      messagingSenderId: "502230560480",
+      appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
+      measurementId: "G-9LFHSQV4Z1"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth(app);
+
+    // Function to populate the class dropdown
+    function populateClassDropdown() {
+      const classDropdown = document.getElementById('classDropdown');
+      const classesRef = ref(database, 'classes');
+
+      onValue(classesRef, (snapshot) => {
+        classDropdown.innerHTML = '<option value="">Select Class</option>';
+        const classes = [];
+        snapshot.forEach((classSnapshot) => {
+          const className = classSnapshot.child('name').val();
+          const classId = classSnapshot.key;
+          classes.push({ id: classId, name: className });
+        });
+
+        // Sort classes numerically
+        classes.sort((a, b) => {
+          const numA = parseInt(a.name.replace(/\D/g, ''), 10);
+          const numB = parseInt(b.name.replace(/\D/g, ''), 10);
+          return numA - numB;
+        });
+
+        classes.forEach((classData) => {
+          const option = document.createElement('option');
+          option.value = classData.id;
+          option.textContent = classData.name;
+          classDropdown.appendChild(option);
+        });
+      });
+    }
+
+    // Function to populate the section dropdown
+    function populateSectionDropdown(selectedClassId) {
+      const sectionDropdown = document.getElementById('sectionDropdown');
+      const sectionsRef = ref(database, `classes/${selectedClassId}/sections`);
+
+      onValue(sectionsRef, (snapshot) => {
+        sectionDropdown.innerHTML = '<option value="">Select Section</option>';
+        const sections = [];
+        snapshot.forEach((sectionSnapshot) => {
+          const sectionName = sectionSnapshot.child('name').val();
+          const sectionId = sectionSnapshot.key;
+          sections.push({ id: sectionId, name: sectionName });
+        });
+
+        // Sort sections numerically
+        sections.sort((a, b) => {
+          const numA = parseInt(a.name.replace(/\D/g, ''), 10);
+          const numB = parseInt(b.name.replace(/\D/g, ''), 10);
+          return numA - numB;
+        });
+
+        sections.forEach((sectionData) => {
+          const option = document.createElement('option');
+          option.value = sectionData.id;
+          option.textContent = sectionData.name;
+          sectionDropdown.appendChild(option);
+        });
+      });
+    }
+
+    // Call the function to populate the class dropdown
+    populateClassDropdown();
+
+    // Handle class dropdown change
+    document.getElementById('classDropdown').addEventListener('change', (event) => {
+      const selectedClassId = event.target.value;
+      if (selectedClassId) {
+        populateSectionDropdown(selectedClassId);
+      } else {
+        // Clear section dropdown if no class is selected
+        document.getElementById('sectionDropdown').innerHTML = '<option value="">Select Section</option>';
+      }
+    });
+
+
+    
+    // Function to save user's class and section selection
+    function saveUserSelection(userId, selectedClassId, selectedSectionId) {
+      const userRef = ref(database, `users/${userId}`);
+      const classSectionRef = ref(database, `classes/${selectedClassId}/sections/${selectedSectionId}/users/${userId}`);
+
+      // Update user's class and section data without overwriting existing data
+      update(userRef, {
+        class: selectedClassId,
+        section: selectedSectionId
+      });
+
+      // Add user to the selected class and section
+      set(classSectionRef, true);
+    }
+
+    // Check if user is logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is logged in
+        const userId = user.uid;
+
+        // Add event listener for saving user's selection
+        document.getElementById('saveButton').addEventListener('click', () => {
+          const selectedClassId = document.getElementById('classDropdown').value;
+          const selectedSectionId = document.getElementById('sectionDropdown').value;
+          saveUserSelection(userId, selectedClassId, selectedSectionId);
+        });
+      } else {
+        // User is not logged in
+        // Redirect to login page or display an error message
+      }
+    });
+    
+  </script>
+</head>
+<body>
+    <div class="flex justify-center items-center min-h-screen bg-gray-100">
+        <div class="bg-white p-8 rounded-lg shadow-md">
+          <h2 class="text-2xl font-bold mb-6 text-center">Class and Section Selection</h2>
+          <div class="mb-4">
+            <label for="classDropdown" class="block mb-2 font-bold">Select Class:</label>
+            <select id="classDropdown" class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+          </div>
+          <div class="mb-4">
+            <label for="sectionDropdown" class="block mb-2 font-bold">Select Section:</label>
+            <select id="sectionDropdown" class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+          </div>
+          <button id="saveButton" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">Save Selection</button>
+        </div>
+      </div>
+</body>
+</html>
