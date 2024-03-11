@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Additional custom styles can be added here */
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md p-4 flex justify-between items-center">
+        <div>
+            <!-- Profile picture -->
+            <img src="profile-pic.jpg" alt="Profile Picture" class="w-10 h-10 rounded-full">
+            <!-- Notification center icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+            </svg>
+        </div>
+        <!-- Responsive menu icon for mobile -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+        </svg>
+    </nav>
+
+    <!-- Main content -->
+    <div class="container mx-auto mt-8 p-4">
+        <!-- Chart section -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <h2 class="text-lg font-semibold mb-4">Work Submitted Last Week</h2>
+            <!-- Insert your chart component here -->
+        </div>
+
+        <!-- Total points section -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <h2 class="text-lg font-semibold mb-4">Total Points</h2>
+            <p class="text-xl font-semibold">Your Points: 500</p>
+            <p class="text-xl font-semibold">Section Points: 2500</p>
+        </div>
+
+        <!-- Streak section -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <h2 class="text-lg font-semibold mb-4">Streak</h2>
+            <p class="text-xl font-semibold">Current Streak: 10 days</p>
+            <p class="text-xl font-semibold">Last Broken: 3 days ago</p>
+        </div>
+
+        <!-- Subject points section -->
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h2 class="text-lg font-semibold mb-4">Subject Points</h2>
+            <!-- Subject pills -->
+            <div class="flex flex-wrap gap-2">
+                <span class="bg-blue-500 text-white px-4 py-2 rounded-full">Math: 200</span>
+                <span class="bg-green-500 text-white px-4 py-2 rounded-full">Science: 150</span>
+                <!-- Add more subject pills here -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>
