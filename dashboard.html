@@ -82,7 +82,7 @@
               database,
               `users/${userId}/homework/${subject}`
             );
-            set(homeworkSubjectRef, {}); // Create an empty object for the subject
+            set(homeworkSubjectRef, true); // Create the subject node if it doesn't exist
           });
         });
       }
@@ -151,18 +151,16 @@
       }
 
       // Function to submit homework
-      // Function to submit homework
       function submitHomework(userId, classId, subject, file) {
         const homeworkRef = ref(
           database,
-          `users/${userId}/homework/${subject}`
+          `users/${userId}/homework/${subject}/${file.name}`
         );
         const fileRef = storageRef(
           storage,
-          `homework/${classId}/${subject}/${userId}/${file.name}`
+          `users/${userId}/homework/${subject}/${file.name}`
         );
         const uploadTask = uploadBytesResumable(fileRef, file);
-        const submissionId = push(homeworkRef).key; // Generate a unique submission ID
 
         uploadTask.on(
           "state_changed",
@@ -175,150 +173,109 @@
           () => {
             getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
               const homeworkData = {
-                fileName: file.name,
                 fileURL: downloadURL,
                 submittedAt: Date.now(),
               };
-              set(
-                ref(
-                  database,
-                  `users/${userId}/homework/${subject}/${submissionId}`
-                ),
-                homeworkData
-              );
-              updatePoints(userId, classId);
+              set(homeworkRef, { [file.name]: homeworkData });
+              updatePoints(userId, classId, userData.section);
               updateContributionChart(userId);
-              // Display a success message
-              alert(`Homework for ${subject} has been submitted successfully!`);
             });
           }
         );
       }
-      getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-        const homeworkData = {
-          fileName: file.name,
-          fileURL: downloadURL,
-          submittedAt: Date.now(),
-        };
-        set(homeworkRef, homeworkData);
-        updatePoints(userId, classId);
-        updateContributionChart(userId);
-        // Display a success message
-        alert(`Homework for ${subject} has been submitted successfully!`);
-      });
 
-      // Function to update points
-      function updatePoints(userId, classId) {
-        const userPointsRef = ref(database, `users/${userId}/points`);
-        const sectionPointsRef = ref(
-          database,
-          `classes/${classId}/sections/${userData.section}/points`
-        );
+      // // Function to update points
+      // function updatePoints(userId, classId, section) {
+      //   const userPointsRef = ref(database, `users/${userId}/points`);
+      //   const sectionPointsRef = ref(
+      //     database,
+      //     `classes/${classId}/sections/${section}/points`
+      //   );
 
-        update(userPointsRef, {
-          total: 10, // Update user's total points
-        });
+      //   update(userPointsRef, {
+      //     total: 10, // Update user's total points
+      //   });
 
-        update(sectionPointsRef, {
-          total: 50, // Update section's total points
-        });
-      }
+      //   update(sectionPointsRef, {
+      //     total: 50, // Update section's total points
+      //   });
+      // }
 
-      // Function to render the contribution chart
-      function renderContributionChart(userId) {
-        const contributionChart = document.getElementById("contributionChart");
-        const homeworkRef = ref(database, `users/${userId}/homework`);
+      // // Function to render the contribution chart
+      // function renderContributionChart(userId) {
+      //   const contributionChart = document.getElementById("contributionChart");
+      //   const homeworkRef = ref(database, `users/${userId}/homework`);
 
-        onValue(homeworkRef, (snapshot) => {
-          contributionChart.innerHTML = ""; // Clear the contribution chart first
-          const submissions = {};
+      //   onValue(homeworkRef, (snapshot) => {
+      //     contributionChart.innerHTML = ""; // Clear the contribution chart first
+      //     const submissions = [];
+      //     snapshot.forEach((subjectSnapshot) => {
+      //       subjectSnapshot.forEach((homeworkSnapshot) => {
+      //         const homeworkData = homeworkSnapshot.val();
+      //         if (homeworkData && homeworkData.submittedAt) {
+      //           const submittedAt = homeworkData.submittedAt;
+      //           const date = new Date(submittedAt);
+      //           submissions.push(date);
+      //         }
+      //       });
+      //     });
 
-          snapshot.forEach((subjectSnapshot) => {
-            subjectSnapshot.forEach((homeworkSnapshot) => {
-              const submittedAt = homeworkSnapshot.val().submittedAt;
-              const date = new Date(submittedAt);
-              const formattedDate = date.toISOString().split("T")[0]; // YYYY-MM-DD
-              if (!submissions[formattedDate]) {
-                submissions[formattedDate] = [];
-              }
-              submissions[formattedDate].push(subjectSnapshot.key);
-            });
-          });
+      //     // Sort submissions by date
+      //     submissions.sort((a, b) => a - b);
 
-          // Sort submissions by date
-          const sortedDates = Object.keys(submissions).sort(
-            (a, b) => new Date(a) - new Date(b)
-          );
+      //     // Render the contribution chart
+      //     const today = new Date();
+      //     const startDate = new Date(
+      //       today.getFullYear(),
+      //       today.getMonth(),
+      //       today.getDate() - 6
+      //     );
+      //     for (let d = startDate; d <= today; d.setDate(d.getDate() + 1)) {
+      //       const day = d.getDate();
+      //       const month = d.getMonth() + 1;
+      //       const year = d.getFullYear();
+      //       const formattedDate = `${year}-${month
+      //         .toString()
+      //         .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+      //       const submissionDate = new Date(formattedDate);
+      //       const bar = document.createElement("div");
+      //       bar.classList.add("h-6", "w-6", "rounded-full", "mx-1");
+      //       if (
+      //         submissions.some(
+      //           (date) => date.toDateString() === submissionDate.toDateString()
+      //         )
+      //       ) {
+      //         bar.classList.add("bg-green-500");
+      //       } else {
+      //         bar.classList.add("bg-gray-300");
+      //       }
+      //       contributionChart.appendChild(bar);
+      //     }
+      //   });
+      // }
 
-          // Render the contribution chart for the last 30 days
-          const today = new Date();
-          const startDate = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate() - 29
-          );
+      // // Function to render total points
+      // function renderTotalPoints(userId, classId) {
+      //   const userPointsRef = ref(database, `users/${userId}/points`);
+      //   const sectionPointsRef = ref(
+      //     database,
+      //     `classes/${classId}/sections/${userData.section}/points`
+      //   );
 
-          for (let d = startDate; d <= today; d.setDate(d.getDate() + 1)) {
-            const day = d.getDate();
-            const month = d.getMonth() + 1;
-            const year = d.getFullYear();
-            const formattedDate = `${year}-${month
-              .toString()
-              .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-            const bar = document.createElement("div");
-            bar.classList.add("h-6", "w-6", "rounded-full", "mx-1");
-            if (submissions[formattedDate]) {
-              bar.classList.add("bg-green-500");
-              const tooltip = document.createElement("div");
-              tooltip.classList.add(
-                "tooltip",
-                "invisible",
-                "absolute",
-                "bg-gray-700",
-                "text-white",
-                "p-2",
-                "rounded"
-              );
-              tooltip.textContent = `Subjects: ${submissions[
-                formattedDate
-              ].join(", ")}`;
-              bar.appendChild(tooltip);
-              bar.addEventListener("mouseover", () => {
-                tooltip.classList.remove("invisible");
-              });
-              bar.addEventListener("mouseout", () => {
-                tooltip.classList.add("invisible");
-              });
-            } else {
-              bar.classList.add("bg-gray-300");
-            }
-            contributionChart.appendChild(bar);
-          }
-        });
-      }
+      //   onValue(userPointsRef, (snapshot) => {
+      //     const userPoints = snapshot.val().total || 0;
+      //     document.getElementById(
+      //       "userPoints"
+      //     ).textContent = `Your Points: ${userPoints}`;
+      //   });
 
-      // Function to render total points
-      function renderTotalPoints(userId, classId) {
-        const userPointsRef = ref(database, `users/${userId}/points`);
-        const sectionPointsRef = ref(
-          database,
-          `classes/${classId}/sections/${userData.section}/points`
-        );
-
-        onValue(userPointsRef, (snapshot) => {
-          const userPoints = snapshot.val().total || 0;
-          document.getElementById(
-            "userPoints"
-          ).textContent = `Your Points: ${userPoints}`;
-        });
-
-        onValue(sectionPointsRef, (snapshot) => {
-          const sectionPoints = snapshot.val().total || 0;
-          document.getElementById(
-            "sectionPoints"
-          ).textContent = `Section Points: ${sectionPoints}`;
-        });
-      }
+      //   onValue(sectionPointsRef, (snapshot) => {
+      //     const sectionPoints = snapshot.val().total || 0;
+      //     document.getElementById(
+      //       "sectionPoints"
+      //     ).textContent = `Section Points: ${sectionPoints}`;
+      //   });
+      // }
     </script>
   </head>
   <body class="bg-gray-100">
