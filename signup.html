@@ -5,10 +5,17 @@
     <link rel="stylesheet" href="./style/style.css" />
     <link href="./style/output.css" rel="stylesheet" />
     <script type="module">
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        set,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
       // Your web app's Firebase configuration
       const firebaseConfig = {
@@ -29,43 +36,43 @@
       const database = getDatabase(app);
 
       // Sign Up
-      signUpForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const email = signUpForm['signUpEmail'].value;
-  const password = signUpForm['signUpPassword'].value;
-  const username = signUpForm['signUpUsername'].value;
-  const phone = signUpForm['signUpPhone'].value;
+      signUpForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const email = signUpForm["signUpEmail"].value;
+        const password = signUpForm["signUpPassword"].value;
+        const username = signUpForm["signUpUsername"].value;
+        const phone = signUpForm["signUpPhone"].value;
 
-  createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      const user = userCredential.user;
-      const userId = user.uid;
+        createUserWithEmailAndPassword(auth, email, password)
+          .then((userCredential) => {
+            const user = userCredential.user;
+            const userId = user.uid;
 
-      // Create the 'homework' node for the new user
-      const homeworkRef = ref(database, `users/${userId}/homework`);
-      set(homeworkRef, {});
+            // Create the 'homework' node for the new user
+            const homeworkRef = ref(database, `users/${userId}/homework`);
+            set(homeworkRef, {});
 
-      // Set the user's data with the 'homework' node
-      const userData = {
-        username: username,
-        email: email,
-        phone: phone,
-        homework: {}
-      };
+            // Set the user's data with the 'homework' node
+            const userData = {
+              username: username,
+              email: email,
+              phone: phone,
+              homework: {},
+            };
 
-      set(ref(database, 'users/' + userId), userData)
-        .then(() => {
-          alert('Sign Up Successful!');
-          window.location.href = 'class_section_selection.html'; // Redirect to login page
-        })
-        .catch((error) => {
-          alert(error.message);
-        });
-    })
-    .catch((error) => {
-      alert(error.message);
-    });
-});
+            set(ref(database, "users/" + userId), userData)
+              .then(() => {
+                alert("Sign Up Successful!");
+                window.location.href = "class_section_selection.html"; // Redirect to login page
+              })
+              .catch((error) => {
+                alert(error.message);
+              });
+          })
+          .catch((error) => {
+            alert(error.message);
+          });
+      });
     </script>
   </head>
   <body>
