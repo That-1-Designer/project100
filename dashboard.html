@@ -149,41 +149,48 @@
           modal.remove();
         });
       }
-
+      
       // Function to submit homework
       function submitHomework(userId, classId, subject, file) {
-        const homeworkRef = ref(
-          database,
-          `users/${userId}/homework/${subject}/${file.name}`
-        );
-        const fileRef = storageRef(
-          storage,
-          `users/${userId}/homework/${subject}/${file.name}`
-        );
-        const uploadTask = uploadBytesResumable(fileRef, file);
+        const user = auth.currentUser;
+        if (user) {
+          const homeworkRef = ref(
+            database,
+            `users/${userId}/homework/${subject}`
+          );
+          const fileRef = storageRef(
+            storage,
+            `homework_img/${userId}/${subject}/${file.name}`
+          );
+          const uploadTask = uploadBytesResumable(fileRef, file);
 
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            // Handle upload progress
-          },
-          (error) => {
-            // Handle upload error
-          },
-          () => {
-            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-              const homeworkData = {
-                fileURL: downloadURL,
-                submittedAt: Date.now(),
-              };
-              set(homeworkRef, { [file.name]: homeworkData });
-              updatePoints(userId, classId, userData.section);
-              updateContributionChart(userId);
-            });
-          }
-        );
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              // Handle upload progress
+            },
+            (error) => {
+              // Handle upload error
+              console.error("Error uploading file:", error);
+            },
+            () => {
+              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                const homeworkData = {
+                  fileURL: downloadURL,
+                  fileName: file.name,
+                  submittedAt: Date.now(),
+                };
+                update(homeworkRef, { [file.name]: homeworkData });
+                // Update points or any other logic if needed
+              });
+            }
+          );
+        } else {
+          // User is not authenticated, handle the error or redirect to the login page
+          console.error("User is not authenticated");
+          // Optionally, you can redirect to the login page here
+        }
       }
-
       // // Function to update points
       // function updatePoints(userId, classId, section) {
       //   const userPointsRef = ref(database, `users/${userId}/points`);
