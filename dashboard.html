@@ -65,6 +65,11 @@
         onValue(userRef, (snapshot) => {
           const userData = snapshot.val();
           const classId = userData.class;
+
+          // Create the 'homework' node if it doesn't exist
+          const homeworkRef = ref(database, `users/${userId}/homework`);
+          set(homeworkRef, {});
+
           createSubjectNodes(userId, classId);
           renderSubjectList(userId, classId);
           renderContributionChart(userId);
@@ -82,7 +87,7 @@
               database,
               `users/${userId}/homework/${subject}`
             );
-            set(homeworkSubjectRef, true); // Create the subject node if it doesn't exist
+            set(homeworkSubjectRef, {}); // Create the subject node as an empty object
           });
         });
       }
@@ -149,7 +154,7 @@
           modal.remove();
         });
       }
-      
+
       // Function to submit homework
       function submitHomework(userId, classId, subject, file) {
         const user = auth.currentUser;
@@ -191,6 +196,7 @@
           // Optionally, you can redirect to the login page here
         }
       }
+
       // // Function to update points
       // function updatePoints(userId, classId, section) {
       //   const userPointsRef = ref(database, `users/${userId}/points`);
