@@ -1,135 +1,87 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Sign Up</title>
-    <link rel="stylesheet" href="./style/style.css" />
-    <link href="./style/output.css" rel="stylesheet" />
-    <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-      import {
-        getDatabase,
-        ref,
-        set,
-      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-      import {
-        getAuth,
-        createUserWithEmailAndPassword,
-      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+<head>
+  <title>Sign Up</title>
+  <link rel="stylesheet" href="./style/style.css">
+  <link href="./style/output.css" rel="stylesheet">
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
         apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
         authDomain: "project100percent-3dfe4.firebaseapp.com",
-        databaseURL:
-          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+        databaseURL: "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
         projectId: "project100percent-3dfe4",
         storageBucket: "project100percent-3dfe4.appspot.com",
         messagingSenderId: "502230560480",
         appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
-        measurementId: "G-9LFHSQV4Z1",
-      };
+        measurementId: "G-9LFHSQV4Z1"
+    };
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const database = getDatabase(app);
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-      // Sign Up
-      signUpForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const email = signUpForm["signUpEmail"].value;
-        const password = signUpForm["signUpPassword"].value;
-        const username = signUpForm["signUpUsername"].value;
-        const phone = signUpForm["signUpPhone"].value;
+    // Sign Up
+    const signUpForm = document.getElementById('signUpForm');
+    signUpForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = signUpForm['signUpEmail'].value;
+      const password = signUpForm['signUpPassword'].value;
+      const username = signUpForm['signUpUsername'].value;
+      const phone = signUpForm['signUpPhone'].value;
 
-        createUserWithEmailAndPassword(auth, email, password)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            const userId = user.uid;
-
-            // Create the 'homework' node for the new user
-            const homeworkRef = ref(database, `users/${userId}/homework`);
-            set(homeworkRef, {});
-
-            // Set the user's data with the 'homework' node
-            const userData = {
-              username: username,
-              email: email,
-              phone: phone,
-              homework: {},
-            };
-
-            set(ref(database, "users/" + userId), userData)
-              .then(() => {
-                alert("Sign Up Successful!");
-                window.location.href = "class_section_selection.html"; // Redirect to login page
-              })
-              .catch((error) => {
-                alert(error.message);
-              });
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          set(ref(db, 'users/' + user.uid), {
+            username: username,
+            email: email,
+            phone: phone
+          })
+          .then(() => {
+            alert('Sign Up Successful!');
+            window.location.href = 'class_section_selection.html'; // Redirect to login page
           })
           .catch((error) => {
             alert(error.message);
           });
-      });
-    </script>
-  </head>
-  <body>
+        })
+        .catch((error) => {
+          alert(error.message);
+        });
+    });
+  </script>
+</head>
+<body>
     <div class="flex justify-center items-center min-h-screen bg-gray-100">
-      <div class="bg-white p-8 rounded-lg shadow-md">
-        <h2 class="text-2xl font-bold mb-6 text-center">Sign Up</h2>
-        <form id="signUpForm">
-          <div class="mb-4">
-            <input
-              type="text"
-              id="signUpUsername"
-              required
-              class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Username"
-            />
-          </div>
-          <div class="mb-4">
-            <input
-              type="text"
-              id="signUpEmail"
-              required
-              class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Email"
-            />
-          </div>
-          <div class="mb-4">
-            <input
-              type="text"
-              id="signUpPassword"
-              required
-              class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Password"
-            />
-          </div>
-          <div class="mb-4">
-            <input
-              type="text"
-              id="signUpPhone"
-              required
-              class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Phone Number"
-            />
-          </div>
-          <!-- Update other input fields with similar styles -->
-          <button
-            type="submit"
-            class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors"
-          >
-            Sign Up
-          </button>
-        </form>
-        <p class="mt-4 text-center">
-          <a href="login.html" class="text-blue-500 hover:text-blue-600"
-            >Already have an account? Log In</a
-          >
-        </p>
+        <div class="bg-white p-8 rounded-lg shadow-md">
+          <h2 class="text-2xl font-bold mb-6 text-center">Sign Up</h2>
+          <form id="signUpForm">
+            <div class="mb-4">
+                <input type="text" id="signUpUsername" required class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Username">
+            </div>
+            <div class="mb-4">
+                <input type="text" id="signUpEmail" required class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email">
+            </div>
+            <div class="mb-4">
+                <input type="text" id="signUpPassword" required class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password">
+            </div>
+            <div class="mb-4">
+                <input type="text" id="signUpPhone" required class="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Phone Number">
+            </div>
+            <!-- Update other input fields with similar styles -->
+            <button type="submit" class="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">Sign Up</button>
+          </form>
+          <p class="mt-4 text-center">
+            <a href="login.html" class="text-blue-500 hover:text-blue-600">Already have an account? Log In</a>
+          </p>
+        </div>
       </div>
-    </div>
-  </body>
+</body>
 </html>
