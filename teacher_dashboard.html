@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Dashboard</title>
+    <link rel="stylesheet" href="./style/style.css">
+    <link href="./style/output.css" rel="stylesheet">
+    <script type="module">
+      // Import the necessary Firebase modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        onValue,
+        set,
+        update,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+      import {
+        getStorage,
+        ref as storageRef,
+        uploadBytesResumable,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+      // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
+            authDomain: "project100percent-3dfe4.firebaseapp.com",
+            databaseURL:
+            "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+            projectId: "project100percent-3dfe4",
+            storageBucket: "project100percent-3dfe4.appspot.com",
+            messagingSenderId: "502230560480",
+            appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
+            measurementId: "G-9LFHSQV4Z1",
+        };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+      const storage = getStorage(app);
+
+      // Check if the teacher is logged in
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          const teacherId = user.uid;
+          displayTeacherDashboard(teacherId);
+        } else {
+          // Teacher is not logged in, redirect to the teacher login page
+          window.location.href = "teacher_login.html";
+        }
+      });
+
+      // Function to display the teacher dashboard
+      function displayTeacherDashboard(teacherId) {
+        const teacherRef = ref(database, `teachers/${teacherId}`);
+        onValue(teacherRef, (snapshot) => {
+          const teacherData = snapshot.val();
+          const assignedClasses = teacherData.assignedClasses;
+          renderClassSelection(assignedClasses);
+          renderSubjectList(assignedClasses);
+        });
+      }
+
+      // Function to render the class selection dropdown
+      function renderClassSelection(assignedClasses) {
+        const classSelect = document.getElementById("classSelect");
+        for (const classId in assignedClasses) {
+          const option = document.createElement("option");
+          option.value = classId;
+          option.textContent = assignedClasses[classId].name;
+          classSelect.appendChild(option);
+        }
+        classSelect.addEventListener("change", () => {
+          const selectedClassId = classSelect.value;
+          renderSubjectList(assignedClasses[selectedClassId].subjects);
+        });
+      }
+
+      // Function to render the subject list
+      function renderSubjectList(subjects) {
+        const subjectList = document.getElementById("subjectList");
+        subjectList.innerHTML = ""; // Clear the subject list first
+        for (const subjectId in subjects) {
+          const subject = subjects[subjectId].name;
+          const li = document.createElement("li");
+          li.textContent = subject;
+          li.classList.add("subject-item");
+          li.addEventListener("click", () => {
+            openHomeworkSubmissionModal(subjectId);
+          });
+          subjectList.appendChild(li);
+        }
+      }
+
+      // Function to open the homework submission modal
+      function openHomeworkSubmissionModal(subjectId) {
+        const modal = document.createElement("div");
+        modal.classList.add("fixed", "z-10", "inset-0", "overflow-y-auto");
+        modal.innerHTML = `
+                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 transition-opacity">
+                        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                    </div>
+                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
+                    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg class="h-6 w-6 text-blue-600" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
+                                        Submit Homework
+                                    </h3>
+                                    <div class="mt-2">
+                                        <input type="file" id="homeworkFile" class="mt-2 mb-4">
+                                        <button id="submitHomeworkBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
+                                            Submit
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        document.body.appendChild(modal);
+
+        const submitHomeworkBtn = modal.querySelector("#submitHomeworkBtn");
+        submitHomeworkBtn.addEventListener("click", () => {
+          const homeworkFile = modal.querySelector("#homeworkFile").files[0];
+          submitHomework(subjectId, homeworkFile);
+          modal.remove();
+        });
+      }
+
+      // Function to submit homework
+      function submitHomework(subjectId, file) {
+        const user = auth.currentUser;
+        if (user) {
+          const teacherId = user.uid;
+          const fileRef = storageRef(
+            storage,
+            `homework/${subjectId}/${file.name}`
+          );
+          const uploadTask = uploadBytesResumable(fileRef, file);
+
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              // Handle upload progress
+            },
+            (error) => {
+              // Handle upload error
+              console.error("Error uploading file:", error);
+            },
+            () => {
+              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                const homeworkData = {
+                  fileURL: downloadURL,
+                  fileName: file.name,
+                  submittedAt: Date.now(),
+                };
+                const homeworkRef = ref(
+                  database,
+                  `subjects/${subjectId}/homework`
+                );
+                update(homeworkRef, { [file.name]: homeworkData });
+
+                // Notify students about the new homework assignment
+                const studentsRef = ref(database, `subjects/${subjectId}/students`);
+                onValue(studentsRef, (snapshot) => {
+                  snapshot.forEach((studentSnapshot) => {
+                    const studentId = studentSnapshot.key;
+                    const notificationRef = ref(
+                      database,
+                      `users/${studentId}/notifications`
+                    );
+                    const notification = {
+                      message: `New homework assignment for ${subjectId}`,
+                      timestamp: Date.now(),
+                    };
+                    update(notificationRef, { [Date.now()]: notification });
+                  });
+                });
+              });
+            }
+          );
+        } else {
+          // Teacher is not authenticated, handle the error or redirect to the login page
+          console.error("Teacher is not authenticated");
+          // Optionally, you can redirect to the login page here
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Navbar -->
+    <!-- ... -->
+
+    <!-- Main content -->
+    <div class="container mx-auto mt-8 p-4">
+      <!-- Class selection -->
+      <div class="bg-white rounded-lg shadow-md p-4">
+        <h2 class="text-lg font-semibold mb-4">Select Class</h2>
+        <select id="classSelect" class="w-full rounded-md border-gray-300">
+          <!-- Class options will be rendered here -->
+        </select>
+      </div>
+
+      <!-- Subject list -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Subjects</h2>
+        <ul id="subjectList" class="grid grid-cols-3 gap-4">
+          <!-- Subject list will be rendered here -->
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
