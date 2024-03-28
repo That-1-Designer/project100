@@ -2,8 +2,8 @@
 <html>
   <head>
     <title>Teacher Sign Up</title>
-    <link rel="stylesheet" href="./style/style.css">
-    <link href="./style/output.css" rel="stylesheet">
+    <link rel="stylesheet" href="./style/style.css" />
+    <link href="./style/output.css" rel="stylesheet" />
     <script type="module">
       // Import the necessary Firebase modules
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -21,8 +21,7 @@
       const firebaseConfig = {
         apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
         authDomain: "project100percent-3dfe4.firebaseapp.com",
-        databaseURL:
-          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+        databaseURL: "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
         projectId: "project100percent-3dfe4",
         storageBucket: "project100percent-3dfe4.appspot.com",
         messagingSenderId: "502230560480",
@@ -42,7 +41,7 @@
         const email = signUpForm["signUpEmail"].value;
         const password = signUpForm["signUpPassword"].value;
         const name = signUpForm["signUpName"].value;
-        // Add other form fields as needed
+        const subject = signUpForm["subject"].value;
 
         createUserWithEmailAndPassword(auth, email, password)
           .then((userCredential) => {
@@ -50,7 +49,7 @@
             set(ref(database, "teachers/" + user.uid), {
               name: name,
               email: email,
-              // Add other teacher details as needed
+              subject: subject, // Add the subject to the database
             })
               .then(() => {
                 alert("Sign Up Successful!");
@@ -84,7 +83,21 @@
             required
           />
         </div>
-        <!-- Add other form fields as needed -->
+        <div>
+          <label for="subject">Subject:</label>
+          <select id="subject" name="subject" required>
+            <option value="">Select a subject</option>
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="EVS">EVS</option>
+            <option value="Science">Science</option>
+            <option value="Political Science">Political Science</option>
+            <option value="Maths">Maths</option>
+            <option value="Computer">Computer</option>
+            <option value="Arts">Arts</option>
+            <option value="SST">SST</option>
+          </select>
+        </div>
         <button type="submit">Sign Up</button>
       </form>
     </div>
