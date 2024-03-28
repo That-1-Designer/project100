@@ -11,6 +11,8 @@
         getDatabase,
         ref,
         set,
+        get,
+        child,
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
       import {
         getAuth,
@@ -21,7 +23,8 @@
       const firebaseConfig = {
         apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
         authDomain: "project100percent-3dfe4.firebaseapp.com",
-        databaseURL: "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+        databaseURL:
+          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
         projectId: "project100percent-3dfe4",
         storageBucket: "project100percent-3dfe4.appspot.com",
         messagingSenderId: "502230560480",
@@ -34,6 +37,62 @@
       const database = getDatabase(app);
       const auth = getAuth(app);
 
+      // Function to fetch class and section data from Firebase
+      async function fetchClassData() {
+        const classesRef = ref(database, "classes");
+        const classesSnapshot = await get(classesRef);
+        const classes = classesSnapshot.val();
+        return classes;
+      }
+
+      // Function to populate class checkboxes and section checkboxes
+      async function populateClassCheckboxesAndSections() {
+        const classes = await fetchClassData();
+
+        const classCheckboxContainer = document.getElementById(
+          "classCheckboxContainer"
+        );
+        const sectionCheckboxContainer = document.getElementById(
+          "sectionCheckboxContainer"
+        );
+
+        for (const className in classes) {
+          const classCheckbox = document.createElement("input");
+          classCheckbox.type = "checkbox";
+          classCheckbox.id = `class-${className}`;
+          classCheckbox.value = className;
+
+          const classLabel = document.createElement("label");
+          classLabel.htmlFor = `class-${className}`;
+          classLabel.textContent = classes[className].name;
+
+          const classDiv = document.createElement("div");
+          classDiv.appendChild(classCheckbox);
+          classDiv.appendChild(classLabel);
+
+          classCheckboxContainer.appendChild(classDiv);
+
+          // Populate section checkboxes
+          const sections = classes[className].sections;
+          for (const sectionName in sections) {
+            const sectionCheckbox = document.createElement("input");
+            sectionCheckbox.type = "checkbox";
+            sectionCheckbox.id = `section-${sectionName}`;
+            sectionCheckbox.value = sectionName;
+
+            const sectionLabel = document.createElement("label");
+            sectionLabel.htmlFor = `section-${sectionName}`;
+            sectionLabel.textContent = sections[sectionName].name;
+
+            const sectionDiv = document.createElement("div");
+            sectionDiv.appendChild(sectionCheckbox);
+            sectionDiv.appendChild(sectionLabel);
+
+            sectionCheckboxContainer.appendChild(sectionDiv);
+          }
+        }
+      }
+
       // Teacher Sign Up
       const signUpForm = document.getElementById("signUpForm");
       signUpForm.addEventListener("submit", (e) => {
@@ -41,19 +100,39 @@
         const email = signUpForm["signUpEmail"].value;
         const password = signUpForm["signUpPassword"].value;
         const name = signUpForm["signUpName"].value;
-        const subject = signUpForm["subject"].value;
+        const selectedClasses = Array.from(
+          document.querySelectorAll('input[id^="class-"]:checked')
+        ).map((checkbox) => checkbox.value);
+        const selectedSections = Array.from(
+          document.querySelectorAll('input[id^="section-"]:checked')
+        ).map((checkbox) => checkbox.value);
 
         createUserWithEmailAndPassword(auth, email, password)
           .then((userCredential) => {
             const user = userCredential.user;
-            set(ref(database, "teachers/" + user.uid), {
+            const userId = user.uid;
+
+            // Store name and email under the user ID node
+            set(ref(database, "teachers/" + userId), {
               name: name,
               email: email,
-              subject: subject, // Add the subject to the database
             })
               .then(() => {
-                alert("Sign Up Successful!");
-                window.location.href = "teacher_dashboard.html"; // Redirect to teacher dashboard
+                // Store classes and sections under a separate node
+                set(
+                  ref(database, "teachers/" + userId + "/classes_sections"),
+                  {
+                    classes: selectedClasses,
+                    sections: selectedSections,
+                  }
+                )
+                  .then(() => {
+                    alert("Sign Up Successful!");
+                    window.location.href = "teacher_dashboard.html";
+                  })
+                  .catch((error) => {
+                    alert(error.message);
+                  });
               })
               .catch((error) => {
                 alert(error.message);
@@ -63,6 +142,9 @@
             alert(error.message);
           });
       });
+
+      // Populate class checkboxes and section checkboxes on page load
+      populateClassCheckboxesAndSections();
     </script>
   </head>
   <body>
@@ -84,19 +166,12 @@
           />
         </div>
         <div>
-          <label for="subject">Subject:</label>
-          <select id="subject" name="subject" required>
-            <option value="">Select a subject</option>
-            <option value="English">English</option>
-            <option value="Hindi">Hindi</option>
-            <option value="EVS">EVS</option>
-            <option value="Science">Science</option>
-            <option value="Political Science">Political Science</option>
-            <option value="Maths">Maths</option>
-            <option value="Computer">Computer</option>
-            <option value="Arts">Arts</option>
-            <option value="SST">SST</option>
-          </select>
+          <label>Select Classes:</label>
+          <div id="classCheckboxContainer"></div>
+        </div>
+        <div>
+          <label>Select Sections:</label>
+          <div id="sectionCheckboxContainer"></div>
         </div>
         <button type="submit">Sign Up</button>
       </form>
