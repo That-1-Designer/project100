@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Teacher Dashboard</title>
-    <link rel="stylesheet" href="./style/style.css" />
     <link href="./style/output.css" rel="stylesheet" />
     <script type="module">
       // Import the necessary Firebase modules
@@ -47,7 +46,7 @@
         } else {
           console.log("Teacher not logged in");
           // Teacher is not logged in, redirect to the teacher login page
-          window.location.href = "teacher_login.html";
+          window.location.href = "teacher_signup.html";
         }
       });
 
@@ -58,9 +57,10 @@
           teacherRef,
           (snapshot) => {
             const teacherData = snapshot.val();
-            if (teacherData && teacherData.classes) {
+            if (teacherData && teacherData.classes_sections) {
               console.log("Teacher data retrieved:", teacherData);
-              renderClassSelectionModal(teacherId, teacherData.classes);
+              const selectedClasses = teacherData.classes_sections.classes;
+              renderSubjectSelectionModal(teacherId, selectedClasses);
             } else {
               console.error("Teacher classes data not found");
             }
@@ -71,8 +71,8 @@
         );
       }
 
-      // Function to render the class selection modal
-      function renderClassSelectionModal(teacherId, existingClasses) {
+      // Function to render the subject selection modal
+      function renderSubjectSelectionModal(teacherId, selectedClasses) {
         const modal = document.createElement("div");
         modal.classList.add("fixed", "z-10", "inset-0", "overflow-y-auto");
         modal.innerHTML = `
@@ -86,13 +86,13 @@
                 <div class="sm:flex sm:items-start">
                   <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                     <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
-                      Select Classes and Sections
+                      Select Subject
                     </h3>
                     <div class="mt-2">
-                      <div class="flex flex-wrap">
-                        ${renderClassSectionOptions(existingClasses)}
-                      </div>
-                      <button id="submitClassesBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
+                      <select id="subjectSelect" class="w-full rounded-md border-gray-300">
+                        ${renderSubjectOptions(selectedClasses)}
+                      </select>
+                      <button id="submitSubjectBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
                         Submit
                       </button>
                     </div>
@@ -104,71 +104,106 @@
         `;
         document.body.appendChild(modal);
 
-        const submitClassesBtn = modal.querySelector("#submitClassesBtn");
-        submitClassesBtn.addEventListener("click", () => {
-          const selectedClasses = Array.from(
-            modal.querySelectorAll('input[type="checkbox"]:checked')
-          ).map((checkbox) => checkbox.value);
-          saveSelectedClasses(teacherId, selectedClasses);
+        const submitSubjectBtn = modal.querySelector("#submitSubjectBtn");
+        submitSubjectBtn.addEventListener("click", () => {
+          const selectedSubject = modal.querySelector("#subjectSelect").value;
+          saveSelectedSubject(teacherId, selectedSubject);
           modal.remove();
         });
       }
 
-      // Function to render class and section options
-      function renderClassSectionOptions(existingClasses) {
-        let options = "";
-        for (let classNum = 1; classNum <= 12; classNum++) {
-          for (let section of "ABCDEFG") {
-            const label = `Class ${classNum} Section ${section}`;
-            const value = `${classNum}-${section}`;
-            const isChecked = existingClasses.includes(value);
-            options += `
-              <div class="mr-4 mb-2">
-                <input type="checkbox" id="${value}" value="${value}" class="form-checkbox" ${
-              isChecked ? "checked" : ""
-            }>
-                <label for="${value}" class="ml-2 text-gray-700">${label}</label>
-              </div>
-            `;
+      // Function to render subject options
+      function renderSubjectOptions(selectedClasses, teacherId) {
+        const subjectSet = new Set();
+        let options = "<option value=''>Select Subject</option>";
+        const classesRef = ref(database, "classes");
+        onValue(
+          classesRef,
+          (snapshot) => {
+            const classes = snapshot.val();
+            for (const classId in classes) {
+              const classData = classes[classId];
+              if (selectedClasses.includes(classId)) {
+                const subjects = classData.subjects;
+                for (const subjectId in subjects) {
+                  const subjectData = subjects[subjectId];
+                  if (!subjectSet.has(subjectData.name)) {
+                    subjectSet.add(subjectData.name);
+                    options += `<option value="${subjectId}">${subjectData.name}</option>`;
+                  }
+                }
+              }
+            }
+            const subjectSelect = document.getElementById("subjectSelect");
+            subjectSelect.innerHTML = options;
+            subjectSelect.addEventListener("change", () => {
+              const selectedSubjectId = subjectSelect.value;
+              saveSelectedSubject(teacherId, selectedSubjectId);
+            });
+          },
+          (error) => {
+            console.error("Error retrieving classes and subjects:", error);
           }
-        }
-        return options;
+        );
       }
 
-      // Function to save selected classes and sections
-      function saveSelectedClasses(teacherId, selectedClasses) {
-        const teacherRef = ref(database, `teachers/${teacherId}/teachingClasses`);
-        set(teacherRef, selectedClasses)
+      // Function to save selected subject
+      function saveSelectedSubject(teacherId, selectedSubjectId) {
+        const teacherRef = ref(database, `teachers/${teacherId}/subject`);
+        set(teacherRef, selectedSubjectId)
           .then(() => {
-            console.log("Classes and sections saved successfully!");
-            // Render the subject list and other functionalities here
+            console.log("Subject saved successfully!");
+            // Add any additional functionality here
           })
           .catch((error) => {
-            console.error("Error saving classes and sections:", error);
+            console.error("Error saving subject:", error);
           });
       }
+
     </script>
   </head>
   <body class="bg-gray-100">
     <!-- Navbar -->
-    <!-- ... -->
+    <nav class="bg-white shadow">
+      <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center py-4">
+          <div class="text-xl font-bold">Teacher Dashboard</div>
+          <!-- Add additional navigation links or user profile here -->
+        </div>
+      </div>
+    </nav>
 
     <!-- Main content -->
     <div class="container mx-auto mt-8 p-4">
-      <!-- Class selection -->
-      <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold mb-4">Select Class</h2>
-        <select id="classSelect" class="w-full rounded-md border-gray-300">
-          <!-- Class options will be rendered here -->
-        </select>
-      </div>
-
-      <!-- Subject list -->
-      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
-        <h2 class="text-lg font-semibold mb-4">Subjects</h2>
-        <ul id="subjectList" class="grid grid-cols-3 gap-4">
-          <!-- Subject list will be rendered here -->
-        </ul>
+      <!-- Subject selection -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Select Subject</h2>
+        <div class="flex justify-center">
+          <div class="w-full max-w-xs">
+            <div class="relative">
+              <select
+                id="subjectSelect"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 pr-10"
+              ></select>
+              <div
+                class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none"
+              >
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </body>
