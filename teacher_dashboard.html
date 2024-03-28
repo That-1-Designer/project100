@@ -22,7 +22,15 @@
 
       // Your Firebase configuration
       const firebaseConfig = {
-        // ... (your Firebase configuration)
+        apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
+        authDomain: "project100percent-3dfe4.firebaseapp.com",
+        databaseURL:
+          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+        projectId: "project100percent-3dfe4",
+        storageBucket: "project100percent-3dfe4.appspot.com",
+        messagingSenderId: "502230560480",
+        appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
+        measurementId: "G-9LFHSQV4Z1",
       };
 
       // Initialize Firebase
@@ -50,9 +58,10 @@
           teacherRef,
           (snapshot) => {
             const teacherData = snapshot.val();
-            if (teacherData && teacherData.classes) {
+            if (teacherData && teacherData.classes_sections) {
               console.log("Teacher data retrieved:", teacherData);
-              renderClassSelectionModal(teacherId, teacherData.classes);
+              const selectedClasses = teacherData.classes_sections.classes;
+              renderSubjectSelectionModal(teacherId, selectedClasses);
             } else {
               console.error("Teacher classes data not found");
             }
@@ -63,8 +72,8 @@
         );
       }
 
-      // Function to render the class selection modal
-      function renderClassSelectionModal(teacherId, existingClasses) {
+      // Function to render the subject selection modal
+      function renderSubjectSelectionModal(teacherId, selectedClasses) {
         const modal = document.createElement("div");
         modal.classList.add("fixed", "z-10", "inset-0", "overflow-y-auto");
         modal.innerHTML = `
@@ -78,13 +87,13 @@
                 <div class="sm:flex sm:items-start">
                   <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                     <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
-                      Select Classes and Sections
+                      Select Subject
                     </h3>
                     <div class="mt-2">
-                      <div class="flex flex-wrap">
-                        ${renderClassSectionOptions(existingClasses)}
-                      </div>
-                      <button id="submitClassesBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
+                      <select id="subjectSelect" class="w-full rounded-md border-gray-300">
+                        ${renderSubjectOptions(selectedClasses)}
+                      </select>
+                      <button id="submitSubjectBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
                         Submit
                       </button>
                     </div>
@@ -96,47 +105,49 @@
         `;
         document.body.appendChild(modal);
 
-        const submitClassesBtn = modal.querySelector("#submitClassesBtn");
-        submitClassesBtn.addEventListener("click", () => {
-          const selectedClasses = Array.from(
-            modal.querySelectorAll('input[type="checkbox"]:checked')
-          ).map((checkbox) => checkbox.value);
-          saveSelectedClasses(teacherId, selectedClasses);
+        const submitSubjectBtn = modal.querySelector("#submitSubjectBtn");
+        submitSubjectBtn.addEventListener("click", () => {
+          const selectedSubject = modal.querySelector("#subjectSelect").value;
+          saveSelectedSubject(teacherId, selectedSubject);
           modal.remove();
         });
       }
 
-      // Function to render class and section options
-      function renderClassSectionOptions(existingClasses) {
+      // Function to render subject options
+      function renderSubjectOptions(selectedClasses) {
         let options = "";
-        for (let classNum = 1; classNum <= 12; classNum++) {
-          for (let section of "ABCDEFG") {
-            const label = `Class ${classNum} Section ${section}`;
-            const value = `${classNum}-${section}`;
-            const isChecked = existingClasses.includes(value);
-            options += `
-              <div class="mr-4 mb-2">
-                <input type="checkbox" id="${value}" value="${value}" class="form-checkbox" ${
-              isChecked ? "checked" : ""
-            }>
-                <label for="${value}" class="ml-2 text-gray-700">${label}</label>
-              </div>
-            `;
+        const subjectsRef = ref(database, "subjects");
+        onValue(
+          subjectsRef,
+          (snapshot) => {
+            const subjects = snapshot.val();
+            for (const subject in subjects) {
+              const subjectData = subjects[subject];
+              const isSubjectForSelectedClasses = subjectData.classes.some(
+                (c) => selectedClasses.includes(c)
+              );
+              if (isSubjectForSelectedClasses) {
+                options += `<option value="${subject}">${subjectData.name}</option>`;
+              }
+            }
+          },
+          (error) => {
+            console.error("Error retrieving subjects:", error);
           }
-        }
+        );
         return options;
       }
 
-      // Function to save selected classes and sections
-      function saveSelectedClasses(teacherId, selectedClasses) {
-        const teacherRef = ref(database, `teachers/${teacherId}/teachingClasses`);
-        set(teacherRef, selectedClasses)
+      // Function to save selected subject
+      function saveSelectedSubject(teacherId, selectedSubject) {
+        const teacherRef = ref(database, `teachers/${teacherId}/subject`);
+        set(teacherRef, selectedSubject)
           .then(() => {
-            console.log("Classes and sections saved successfully!");
-            // Render the subject list and other functionalities here
+            console.log("Subject saved successfully!");
+            // Add any additional functionality here
           })
           .catch((error) => {
-            console.error("Error saving classes and sections:", error);
+            console.error("Error saving subject:", error);
           });
       }
     </script>
@@ -147,20 +158,10 @@
 
     <!-- Main content -->
     <div class="container mx-auto mt-8 p-4">
-      <!-- Class selection -->
+      <!-- Subject selection -->
       <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold mb-4">Select Class</h2>
-        <select id="classSelect" class="w-full rounded-md border-gray-300">
-          <!-- Class options will be rendered here -->
-        </select>
-      </div>
-
-      <!-- Subject list -->
-      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
-        <h2 class="text-lg font-semibold mb-4">Subjects</h2>
-        <ul id="subjectList" class="grid grid-cols-3 gap-4">
-          <!-- Subject list will be rendered here -->
-        </ul>
+        <h2 class="text-lg font-semibold mb-4">Select Subject</h2>
+        <!-- Subject selection modal will be rendered here -->
       </div>
     </div>
   </body>
