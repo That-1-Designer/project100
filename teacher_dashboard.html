@@ -153,10 +153,18 @@
       }
 
       function fetchStudentImages(userId, subject) {
+<<<<<<< HEAD
+        const storagePathRef = storageRef(
+          storage,
+          `homework_img/${userId}/${subject}/${}`
+        );
+        listAll(storagePathRef)
+=======
         const storageRef = getStorage();
         const listRef = ref(storageRef, `homework_img/${userId}/${subject}`);
 
         listAll(listRef)
+>>>>>>> 75211eda0a0f50cc3f4359f47602a72cf5ff0ec1
           .then((res) => {
             const imageLinks = [];
             res.items.forEach((itemRef) => {
