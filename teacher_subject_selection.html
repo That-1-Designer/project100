@@ -101,13 +101,14 @@
         return options;
       }
 
-      // Function to save selected subject
-      function saveSelectedSubject(teacherId, selectedSubject) {
+       // Function to save selected subject
+       function saveSelectedSubject(teacherId, selectedSubject) {
         const teacherRef = ref(database, `teachers/${teacherId}/subject`);
         set(teacherRef, selectedSubject)
           .then(() => {
             console.log("Subject saved successfully!");
-            // Optionally, you can display a success message or redirect to another page
+            // Redirect to the teacher dashboard
+            window.location.href = "teacher_dashboard.html";
           })
           .catch((error) => {
             console.error("Error saving subject:", error);
