@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Dashboard</title>
+    <script type="module">
+      // Import the necessary Firebase modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        onValue,
+        set,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+      // Your Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
+        authDomain: "project100percent-3dfe4.firebaseapp.com",
+        databaseURL:
+          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
+        projectId: "project100percent-3dfe4",
+        storageBucket: "project100percent-3dfe4.appspot.com",
+        messagingSenderId: "502230560480",
+        appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
+        measurementId: "G-9LFHSQV4Z1",
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+
+      // Check if the teacher is logged in
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          const teacherId = user.uid;
+          console.log("Teacher logged in:", teacherId);
+          fetchSubjects(teacherId);
+        } else {
+          console.log("Teacher not logged in");
+          // Teacher is not logged in, redirect to the teacher login page
+          window.location.href = "teacher_login.html";
+        }
+      });
+
+      // Function to fetch subjects from the database
+      function fetchSubjects(teacherId) {
+        const classesRef = ref(database, "classes");
+        onValue(classesRef, (snapshot) => {
+          const classesData = snapshot.val();
+          const subjects = new Set();
+          for (const classKey in classesData) {
+            const classSubjects = classesData[classKey].subjects;
+            for (const subjectKey in classSubjects) {
+              subjects.add(classSubjects[subjectKey].name);
+            }
+          }
+          renderSubjectSelection(teacherId, Array.from(subjects));
+        });
+      }
+
+      // Function to render subject selection
+      function renderSubjectSelection(teacherId, subjects) {
+        const subjectSelectContainer = document.getElementById(
+          "subjectSelectContainer"
+        );
+        subjectSelectContainer.innerHTML = `
+          <label for="subjectSelect" class="text-lg font-semibold mb-4">Select Subject</label>
+          <select id="subjectSelect" class="w-full rounded-md border-gray-300">
+            ${renderSubjectOptions(subjects)}
+          </select>
+          <button id="submitSubjectBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
+            Submit
+          </button>
+        `;
+
+        const submitSubjectBtn = document.getElementById("submitSubjectBtn");
+        submitSubjectBtn.addEventListener("click", () => {
+          const subjectSelect = document.getElementById("subjectSelect");
+          const selectedSubject = subjectSelect.value;
+          if (selectedSubject) {
+            saveSelectedSubject(teacherId, selectedSubject);
+          } else {
+            console.error("No subject selected");
+          }
+        });
+      }
+
+      // Function to render subject options
+      function renderSubjectOptions(subjects) {
+        let options = '<option value="">Select a subject</option>';
+        for (const subject of subjects) {
+          options += `<option value="${subject}">${subject}</option>`;
+        }
+        return options;
+      }
+
+      // Function to save selected subject
+      function saveSelectedSubject(teacherId, selectedSubject) {
+        const teacherRef = ref(database, `teachers/${teacherId}/subject`);
+        set(teacherRef, selectedSubject)
+          .then(() => {
+            console.log("Subject saved successfully!");
+            // Optionally, you can display a success message or redirect to another page
+          })
+          .catch((error) => {
+            console.error("Error saving subject:", error);
+          });
+      }
+    </script>
+  </head>
+  <body class="bg-gray-100">
+    <!-- Subject selection -->
+    <div
+      id="subjectSelectContainer"
+      class="container mx-auto mt-8 p-4 bg-white rounded-lg shadow-md"
+    >
+      <!-- Subject selection will be rendered here -->
+    </div>
+  </body>
+</html>
