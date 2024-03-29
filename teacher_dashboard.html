@@ -167,7 +167,7 @@
       function fetchStudentImages(userId, subject) {
         const storagePathRef = storageRef(
           storage,
-          `homework_img/${userId}/${subject}/${file.name}`
+          `homework_img/${userId}/${subject}/${}`
         );
         listAll(storagePathRef)
           .then((res) => {
