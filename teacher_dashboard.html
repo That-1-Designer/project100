@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="./style/style.css" />
     <link href="./style/output.css" rel="stylesheet" />
     <script type="module">
-      // Import the necessary Firebase modules
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
       import {
         getDatabase,
@@ -25,26 +24,15 @@
         getDownloadURL,
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
-      // Your Firebase configuration
       const firebaseConfig = {
-        apiKey: "AIzaSyB3ENB3jhesEfvms1KZth1hJnnwAYNL1-U",
-        authDomain: "project100percent-3dfe4.firebaseapp.com",
-        databaseURL:
-          "https://project100percent-3dfe4-default-rtdb.firebaseio.com",
-        projectId: "project100percent-3dfe4",
-        storageBucket: "project100percent-3dfe4.appspot.com",
-        messagingSenderId: "502230560480",
-        appId: "1:502230560480:web:2a6e94a1586adad81e6a85",
-        measurementId: "G-9LFHSQV4Z1",
+        // Your Firebase configuration
       };
 
-      // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const database = getDatabase(app);
       const auth = getAuth(app);
       const storage = getStorage(app);
 
-      // Check if the teacher is logged in
       onAuthStateChanged(auth, (user) => {
         if (user) {
           const teacherId = user.uid;
@@ -52,59 +40,60 @@
           displayTeacherDashboard(teacherId);
         } else {
           console.log("Teacher not logged in");
-          // Teacher is not logged in, redirect to the teacher login page
           window.location.href = "teacher_login.html";
         }
       });
 
-      // Function to display the teacher dashboard
       function displayTeacherDashboard(teacherId) {
         const teacherRef = ref(database, `teachers/${teacherId}`);
-        onValue(
-          teacherRef,
-          (snapshot) => {
-            const teacherData = snapshot.val();
-            if (teacherData && teacherData.classes_sections) {
-              console.log("Teacher data retrieved:", teacherData);
-              const selectedClasses = teacherData.classes_sections.classes;
-              const selectedSections = teacherData.classes_sections.sections;
-              fetchStudentNames(selectedClasses, selectedSections);
-            } else {
-              console.error("Teacher classes data not found");
-            }
-          },
-          (error) => {
-            console.error("Error retrieving teacher data:", error);
+        onValue(teacherRef, (snapshot) => {
+          const teacherData = snapshot.val();
+          if (teacherData && teacherData.classes_sections) {
+            const classes = teacherData.classes_sections.classes;
+            renderClassDropdown(classes);
+          } else {
+            console.error("Teacher classes data not found");
           }
-        );
+        });
       }
 
-      // Function to fetch student names based on selected classes and sections
-      function fetchStudentNames(selectedClasses, selectedSections) {
+      function renderClassDropdown(classes) {
+        const classDropdown = document.getElementById("classDropdown");
+        classDropdown.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Select a class";
+        classDropdown.appendChild(option);
+
+        classes.forEach((classItem) => {
+          const option = document.createElement("option");
+          option.value = classItem;
+          option.textContent = classItem;
+          classDropdown.appendChild(option);
+        });
+
+        classDropdown.addEventListener("change", () => {
+          const selectedClass = classDropdown.value;
+          fetchStudentNames(selectedClass);
+        });
+      }
+
+      function fetchStudentNames(selectedClass) {
         const usersRef = ref(database, "users");
-        onValue(
-          usersRef,
-          (snapshot) => {
-            const usersData = snapshot.val();
-            const studentNames = {};
-            for (const userId in usersData) {
-              const user = usersData[userId];
-              if (
-                selectedClasses.includes(user.class) &&
-                selectedSections.includes(user.section)
-              ) {
-                studentNames[userId] = user.username;
-              }
+        onValue(usersRef, (snapshot) => {
+          const usersData = snapshot.val();
+          const studentNames = {};
+          for (const userId in usersData) {
+            const user = usersData[userId];
+            if (user.class === selectedClass) {
+              studentNames[userId] = user.username;
             }
-            renderStudentNames(studentNames);
-          },
-          (error) => {
-            console.error("Error fetching student names:", error);
           }
-        );
+          renderStudentNames(studentNames);
+        });
       }
 
-      // Function to render student names
       function renderStudentNames(studentNames) {
         const studentNamesContainer = document.getElementById(
           "studentNamesContainer"
@@ -124,27 +113,19 @@
         }
       }
 
-      // Function to fetch student subjects
       function fetchStudentSubjects(userId) {
         const userRef = ref(database, `users/${userId}/homework`);
-        onValue(
-          userRef,
-          (snapshot) => {
-            const userHomework = snapshot.val();
-            if (userHomework) {
-              const subjects = Object.keys(userHomework);
-              renderSubjectLinks(subjects, userId);
-            } else {
-              console.error("Student homework data not found");
-            }
-          },
-          (error) => {
-            console.error("Error fetching student subjects:", error);
+        onValue(userRef, (snapshot) => {
+          const userHomework = snapshot.val();
+          if (userHomework) {
+            const subjects = Object.keys(userHomework);
+            renderSubjectLinks(subjects, userId);
+          } else {
+            console.error("Student homework data not found");
           }
-        );
+        });
       }
 
-      // Function to render subject links
       function renderSubjectLinks(subjects, userId) {
         const subjectLinksContainer = document.getElementById(
           "subjectLinksContainer"
@@ -163,28 +144,25 @@
         }
       }
 
-      // Function to fetch student images
       function fetchStudentImages(userId, subject) {
-        const storagePathRef = storageRef(
-          storage,
-          `homework_img/${userId}/${subject}/${file.name}`
-        );
-        listAll(storagePathRef)
+        const storageRef = getStorage();
+        const listRef = ref(storageRef, `homework_img/${userId}/${subject}`);
+
+        listAll(listRef)
           .then((res) => {
             const imageLinks = [];
-            for (const item of res.items) {
-              getDownloadURL(item).then((url) => {
+            res.items.forEach((itemRef) => {
+              getDownloadURL(itemRef).then((url) => {
                 imageLinks.push(url);
-                renderImageContainers(imageLinks);
               });
-            }
+            });
+            renderImageContainers(imageLinks);
           })
           .catch((error) => {
             console.error("Error fetching student images:", error);
           });
       }
 
-      // Function to render image containers
       function renderImageContainers(imageLinks) {
         const imageContainersContainer = document.getElementById(
           "imageContainersContainer"
@@ -202,21 +180,22 @@
     </script>
   </head>
   <body class="bg-gray-100">
-    <!-- Main content -->
     <div class="container mx-auto mt-8 p-4">
-      <!-- Student Names -->
       <div class="bg-white rounded-lg shadow-md p-4">
+        <h2 class="text-lg font-semibold mb-4">Class</h2>
+        <select id="classDropdown"></select>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Names</h2>
         <ul id="studentNamesContainer"></ul>
       </div>
 
-      <!-- Subject Links -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Subjects</h2>
         <ul id="subjectLinksContainer"></ul>
       </div>
 
-      <!-- Image Containers -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Images</h2>
         <div id="imageContainersContainer" class="flex flex-wrap"></div>
