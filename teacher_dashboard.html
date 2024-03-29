@@ -13,12 +13,17 @@
         getDatabase,
         ref,
         onValue,
-        set,
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
       import {
         getAuth,
         onAuthStateChanged,
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+      import {
+        getStorage,
+        ref as storageRef,
+        listAll,
+        getDownloadURL,
+      } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
       // Your Firebase configuration
       const firebaseConfig = {
@@ -37,6 +42,7 @@
       const app = initializeApp(firebaseConfig);
       const database = getDatabase(app);
       const auth = getAuth(app);
+      const storage = getStorage(app);
 
       // Check if the teacher is logged in
       onAuthStateChanged(auth, (user) => {
@@ -58,10 +64,11 @@
           teacherRef,
           (snapshot) => {
             const teacherData = snapshot.val();
-            if (teacherData && teacherData.classes) {
+            if (teacherData && teacherData.classes_sections) {
               console.log("Teacher data retrieved:", teacherData);
-              renderClassSelectionModal(teacherId, teacherData.classes);
-              renderSubjectSelection(teacherId, teacherData.subjects);
+              const selectedClasses = teacherData.classes_sections.classes;
+              const selectedSections = teacherData.classes_sections.sections;
+              fetchStudentNames(selectedClasses, selectedSections);
             } else {
               console.error("Teacher classes data not found");
             }
@@ -72,175 +79,147 @@
         );
       }
 
-      // Function to render the class selection modal
-      function renderClassSelectionModal(teacherId, existingClasses) {
-        const modal = document.createElement("div");
-        modal.classList.add("fixed", "z-10", "inset-0", "overflow-y-auto");
-        modal.innerHTML = `
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
-      <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="sm:flex sm:items-start">
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
-                Select Classes and Sections
-              </h3>
-              <div class="mt-2">
-                <div class="flex flex-wrap">
-                  ${renderClassSectionOptions(existingClasses)}
-                </div>
-                <button id="submitClassesBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
-                  Submit
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-        document.body.appendChild(modal);
-
-        const submitClassesBtn = modal.querySelector("#submitClassesBtn");
-        submitClassesBtn.addEventListener("click", () => {
-          const selectedClasses = Array.from(
-            modal.querySelectorAll('input[type="checkbox"]:checked')
-          ).map((checkbox) => checkbox.value);
-          saveSelectedClasses(teacherId, selectedClasses);
-          modal.remove();
-        });
-      }
-
-      // Function to render class and section options
-      function renderClassSectionOptions(existingClasses) {
-        let options = "";
-        for (let classNum = 1; classNum <= 12; classNum++) {
-          for (let section of "ABCDEFG") {
-            const label = `Class ${classNum} Section ${section}`;
-            const value = `${classNum}-${section}`;
-            const isChecked = existingClasses.includes(value);
-            options += `
-        <div class="mr-4 mb-2">
-          <input type="checkbox" id="${value}" value="${value}" class="form-checkbox" ${
-              isChecked ? "checked" : ""
-            }>
-          <label for="${value}" class="ml-2 text-gray-700">${label}</label>
-        </div>
-      `;
-          }
-        }
-        return options;
-      }
-
-      // Function to save selected classes and subject
-      function saveSelectedClasses(
-        teacherId,
-        selectedClasses,
-        selectedSubject
-      ) {
-        const teacherRef = ref(database, `teachers/${teacherId}`);
-        const updates = {
-          teachingClasses: selectedClasses,
-          subjects: {
-            [selectedSubject]: true,
+      // Function to fetch student names based on selected classes and sections
+      function fetchStudentNames(selectedClasses, selectedSections) {
+        const usersRef = ref(database, "users");
+        onValue(
+          usersRef,
+          (snapshot) => {
+            const usersData = snapshot.val();
+            const studentNames = {};
+            for (const userId in usersData) {
+              const user = usersData[userId];
+              if (
+                selectedClasses.includes(user.class) &&
+                selectedSections.includes(user.section)
+              ) {
+                studentNames[userId] = user.username;
+              }
+            }
+            renderStudentNames(studentNames);
           },
-        };
+          (error) => {
+            console.error("Error fetching student names:", error);
+          }
+        );
+      }
 
-        set(teacherRef, updates)
-          .then(() => {
-            console.log("Classes, sections, and subject saved successfully!");
-            // Render the subject list and other functionalities here
+      // Function to render student names
+      function renderStudentNames(studentNames) {
+        const studentNamesContainer = document.getElementById(
+          "studentNamesContainer"
+        );
+        studentNamesContainer.innerHTML = "";
+        for (const userId in studentNames) {
+          const studentName = studentNames[userId];
+          const studentLink = document.createElement("a");
+          studentLink.href = "#";
+          studentLink.textContent = studentName;
+          studentLink.addEventListener("click", () =>
+            fetchStudentSubjects(userId)
+          );
+          const listItem = document.createElement("li");
+          listItem.appendChild(studentLink);
+          studentNamesContainer.appendChild(listItem);
+        }
+      }
+
+      // Function to fetch student subjects
+      function fetchStudentSubjects(userId) {
+        const userRef = ref(database, `users/${userId}/homework`);
+        onValue(
+          userRef,
+          (snapshot) => {
+            const userHomework = snapshot.val();
+            if (userHomework) {
+              const subjects = Object.keys(userHomework);
+              renderSubjectLinks(subjects, userId);
+            } else {
+              console.error("Student homework data not found");
+            }
+          },
+          (error) => {
+            console.error("Error fetching student subjects:", error);
+          }
+        );
+      }
+
+      // Function to render subject links
+      function renderSubjectLinks(subjects, userId) {
+        const subjectLinksContainer = document.getElementById(
+          "subjectLinksContainer"
+        );
+        subjectLinksContainer.innerHTML = "";
+        for (const subject of subjects) {
+          const subjectLink = document.createElement("a");
+          subjectLink.href = "#";
+          subjectLink.textContent = subject;
+          subjectLink.addEventListener("click", () =>
+            fetchStudentImages(userId, subject)
+          );
+          const listItem = document.createElement("li");
+          listItem.appendChild(subjectLink);
+          subjectLinksContainer.appendChild(listItem);
+        }
+      }
+
+      // Function to fetch student images
+      function fetchStudentImages(userId, subject) {
+        const storagePathRef = storageRef(
+          storage,
+          `users/${userId}/homework/${subject}`
+        );
+        listAll(storagePathRef)
+          .then((res) => {
+            const imageLinks = [];
+            for (const item of res.items) {
+              getDownloadURL(item).then((url) => {
+                imageLinks.push(url);
+                renderImageContainers(imageLinks);
+              });
+            }
           })
           .catch((error) => {
-            console.error(
-              "Error saving classes, sections, and subject:",
-              error
-            );
+            console.error("Error fetching student images:", error);
           });
       }
 
-      // Function to render subject selection
-      function renderSubjectSelection(teacherId, subjects) {
-        const subjectSelectContainer = document.getElementById(
-          "subjectSelectContainer"
+      // Function to render image containers
+      function renderImageContainers(imageLinks) {
+        const imageContainersContainer = document.getElementById(
+          "imageContainersContainer"
         );
-        subjectSelectContainer.innerHTML = `
-          <label for="subjectSelect" class="text-lg font-semibold mb-4">Select Subject</label>
-          <select id="subjectSelect" class="w-full rounded-md border-gray-300">
-            ${renderSubjectOptions(subjects)}
-          </select>
-          <button id="submitSubjectBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4">
-            Submit
-          </button>
-        `;
-
-        const submitSubjectBtn = document.getElementById("submitSubjectBtn");
-        submitSubjectBtn.addEventListener("click", () => {
-          const subjectSelect = document.getElementById("subjectSelect");
-          const selectedSubject = subjectSelect.value;
-          if (selectedSubject) {
-            const teacherRef = ref(database, `teachers/${teacherId}`);
-            onValue(
-              teacherRef,
-              (snapshot) => {
-                const teacherData = snapshot.val();
-                if (teacherData && teacherData.teachingClasses) {
-                  saveSelectedClasses(
-                    teacherId,
-                    teacherData.teachingClasses,
-                    selectedSubject
-                  );
-                } else {
-                  console.error("Teacher classes data not found");
-                }
-              },
-              (error) => {
-                console.error("Error retrieving teacher data:", error);
-              }
-            );
-          } else {
-            console.error("No subject selected");
-          }
-        });
-      }
-
-      // Function to render subject options
-      function renderSubjectOptions(subjects) {
-        let options = '<option value="">Select a subject</option>';
-        if (subjects) {
-          const subjectKeys = Object.keys(subjects);
-          for (const subject of subjectKeys) {
-            options += `<option value="${subject}">${subject}</option>`;
-          }
+        imageContainersContainer.innerHTML = "";
+        for (const imageLink of imageLinks) {
+          const imageContainer = document.createElement("div");
+          const image = document.createElement("img");
+          image.src = imageLink;
+          image.alt = "Student Image";
+          imageContainer.appendChild(image);
+          imageContainersContainer.appendChild(imageContainer);
         }
-        return options;
       }
     </script>
   </head>
   <body class="bg-gray-100">
-    <!-- Navbar -->
-    <!-- ... -->
-
     <!-- Main content -->
     <div class="container mx-auto mt-8 p-4">
-      <!-- Class selection -->
+      <!-- Student Names -->
       <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold mb-4">Select Class</h2>
-        <select id="classSelect" class="w-full rounded-md border-gray-300">
-          <!-- Class options will be rendered here -->
-        </select>
+        <h2 class="text-lg font-semibold mb-4">Student Names</h2>
+        <ul id="studentNamesContainer"></ul>
       </div>
 
-      <!-- Subject selection -->
-      <div
-        id="subjectSelectContainer"
-        class="bg-white rounded-lg shadow-md p-4 mt-4"
-      >
-        <!-- Subject selection will be rendered here -->
+      <!-- Subject Links -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Student Subjects</h2>
+        <ul id="subjectLinksContainer"></ul>
+      </div>
+
+      <!-- Image Containers -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Student Images</h2>
+        <div id="imageContainersContainer" class="flex flex-wrap"></div>
       </div>
     </div>
   </body>
