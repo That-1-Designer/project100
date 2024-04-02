@@ -167,17 +167,19 @@
       function fetchStudentImages(userId, subject) {
         const storagePathRef = storageRef(
           storage,
-          `homework_img/${userId}/${subject}/${file.name}`
+          `homework_img/${userId}/${subject}`
         );
         listAll(storagePathRef)
           .then((res) => {
             const imageLinks = [];
-            for (const item of res.items) {
-              getDownloadURL(item).then((url) => {
-                imageLinks.push(url);
-                renderImageContainers(imageLinks);
+            const promises = res.items.map((item) =>
+              getDownloadURL(item).then((url) => imageLinks.push(url))
+            );
+            Promise.all(promises)
+              .then(() => renderImageContainers(imageLinks))
+              .catch((error) => {
+                console.error("Error fetching image URLs:", error);
               });
-            }
           })
           .catch((error) => {
             console.error("Error fetching student images:", error);
@@ -185,20 +187,28 @@
       }
 
       // Function to render image containers
+      // Function to render image containers
       function renderImageContainers(imageLinks) {
         const imageContainersContainer = document.getElementById(
           "imageContainersContainer"
         );
         imageContainersContainer.innerHTML = "";
-        for (const imageLink of imageLinks) {
-          const imageContainer = document.createElement("div");
-          const image = document.createElement("img");
-          image.src = imageLink;
-          image.alt = "Student Image";
-          imageContainer.appendChild(image);
-          imageContainersContainer.appendChild(imageContainer);
+        if (imageLinks.length === 0) {
+          const noImagesMessage = document.createElement("p");
+          noImagesMessage.textContent = "No images found for this subject.";
+          imageContainersContainer.appendChild(noImagesMessage);
+        } else {
+          for (const imageLink of imageLinks) {
+            const imageContainer = document.createElement("div");
+            const image = document.createElement("img");
+            image.src = imageLink;
+            image.alt = "Student Image";
+            imageContainer.appendChild(image);
+            imageContainersContainer.appendChild(imageContainer);
+          }
         }
       }
+      
     </script>
   </head>
   <body class="bg-gray-100">
