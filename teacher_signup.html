@@ -93,6 +93,39 @@
         }
       }
 
+      // Function to handle teacher sign-up
+      function handleTeacherSignUp(userId, name, email, selectedClasses, selectedSections) {
+        // Store name and email under the user ID node
+        set(ref(database, "teachers/" + userId), {
+          name: name,
+          email: email,
+        })
+          .then(() => {
+            // Store classes and sections under a separate node
+            set(ref(database, "teachers/" + userId + "/classes_sections"), {
+              classes: selectedClasses,
+              sections: selectedSections,
+            })
+              .then(() => {
+                // Create an empty homework node
+                set(ref(database, "teachers/" + userId + "/homework"), {})
+                  .then(() => {
+                    alert("Sign Up Successful!");
+                    window.location.href = "teacher_dashboard.html";
+                  })
+                  .catch((error) => {
+                    alert(error.message);
+                  });
+              })
+              .catch((error) => {
+                alert(error.message);
+              });
+          })
+          .catch((error) => {
+            alert(error.message);
+          });
+      }
+
       // Teacher Sign Up
       const signUpForm = document.getElementById("signUpForm");
       signUpForm.addEventListener("submit", (e) => {
@@ -112,31 +145,7 @@
             const user = userCredential.user;
             const userId = user.uid;
 
-            // Store name and email under the user ID node
-            set(ref(database, "teachers/" + userId), {
-              name: name,
-              email: email,
-            })
-              .then(() => {
-                // Store classes and sections under a separate node
-                set(
-                  ref(database, "teachers/" + userId + "/classes_sections"),
-                  {
-                    classes: selectedClasses,
-                    sections: selectedSections,
-                  }
-                )
-                  .then(() => {
-                    alert("Sign Up Successful!");
-                    window.location.href = "teacher_dashboard.html";
-                  })
-                  .catch((error) => {
-                    alert(error.message);
-                  });
-              })
-              .catch((error) => {
-                alert(error.message);
-              });
+            handleTeacherSignUp(userId, name, email, selectedClasses, selectedSections);
           })
           .catch((error) => {
             alert(error.message);
