@@ -42,7 +42,7 @@
           const teacherId = user.uid;
           console.log("Teacher logged in:", teacherId);
           fetchSubjects(teacherId);
-        } else {
+        } else {0
           console.log("Teacher not logged in");
           // Teacher is not logged in, redirect to the teacher login page
           window.location.href = "teacher_login.html";
@@ -114,6 +114,7 @@
             console.error("Error saving subject:", error);
           });
       }
+      
     </script>
   </head>
   <body class="bg-gray-100">
