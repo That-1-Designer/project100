@@ -13,6 +13,7 @@
         getDatabase,
         ref,
         onValue,
+        push, // Import the push function
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
       import {
         getAuth,
@@ -47,7 +48,7 @@
       // Check if the teacher is logged in
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          const teacherId = user.uid;
+          const teacherId = user.uid; // Get the teacher ID from the user object
           console.log("Teacher logged in:", teacherId);
           displayTeacherDashboard(teacherId);
         } else {
@@ -58,59 +59,97 @@
       });
 
       function displayTeacherDashboard(teacherId) {
-  const teacherRef = ref(database, `teachers/${teacherId}`);
-  onValue(
-    teacherRef,
-    (snapshot) => {
-      const teacherData = snapshot.val();
-      if (teacherData && teacherData.classes_sections) {
-        console.log("Teacher data retrieved:", teacherData);
-        const selectedClasses = teacherData.classes_sections.classes;
-        const selectedSections = teacherData.classes_sections.sections;
-        fetchStudentNames(selectedClasses, selectedSections);
-        fetchSubjectList(teacherId, selectedClasses); // Call fetchSubjectList with teacherId and selectedClasses
-      } else {
-        console.error("Teacher classes data not found");
+        const teacherRef = ref(database, `teachers/${teacherId}`);
+        onValue(
+          teacherRef,
+          (snapshot) => {
+            const teacherData = snapshot.val();
+            if (teacherData && teacherData.classes_sections) {
+              console.log("Teacher data retrieved:", teacherData);
+              const selectedClasses = teacherData.classes_sections.classes;
+              const selectedSections = teacherData.classes_sections.sections;
+              fetchStudentNames(selectedClasses, selectedSections);
+              fetchSubjectList(teacherId, selectedClasses); // Call fetchSubjectList with teacherId and selectedClasses
+              setupSubmitHomeworkButton(teacherId); // Call the new function to set up the submit homework button
+            } else {
+              console.error("Teacher classes data not found");
+            }
+          },
+          (error) => {
+            console.error("Error retrieving teacher data:", error);
+          }
+        );
       }
-    },
-    (error) => {
-      console.error("Error retrieving teacher data:", error);
-    }
-  );
-}
-      // Function to fetch the list of subjects
-function fetchSubjectList(teacherId, selectedClasses) {
-  const subjectsRef = ref(database, `classes`);
-  onValue(
-    subjectsRef,
-    (snapshot) => {
-      const classData = snapshot.val();
-      if (classData) {
-        const subjects = [];
-        selectedClasses.forEach((className) => {
-          const classSubjects = classData[className].subjects;
-          if (classSubjects) {
-            subjects.push(...Object.keys(classSubjects));
+
+      // Function to submit homework
+      function submitHomework(teacherId, subject) {
+        const homeworkInput = document.getElementById("homeworkInput").value;
+        if (homeworkInput.trim() !== "") {
+          const homeworkRef = ref(database, `teachers/${teacherId}/homework/${subject}`);
+          push(homeworkRef, homeworkInput)
+            .then(() => {
+              console.log("Homework submitted successfully");
+              document.getElementById("homeworkInput").value = "";
+            })
+            .catch((error) => {
+              console.error("Error submitting homework:", error);
+            });
+        } else {
+          console.error("Homework input cannot be empty");
+        }
+      }
+
+      function setupSubmitHomeworkButton(teacherId) {
+        const submitHomeworkButton = document.getElementById("submitHomeworkButton");
+        const subjectDropdown = document.getElementById("subjectDropdown");
+
+        submitHomeworkButton.addEventListener("click", () => {
+          const selectedSubject = subjectDropdown.value;
+
+          if (selectedSubject === "") {
+            console.error("No subject selected");
+          } else {
+            submitHomework(teacherId, selectedSubject);
           }
         });
-        renderSubjectOptions(subjects);
-      } else {
-        console.error("Class data not found");
       }
-    },
-    (error) => {
-      console.error("Error fetching subject list:", error);
-    }
-  );
-}
-            // Function to render subject options
+
+      // Function to fetch the list of subjects
+      function fetchSubjectList(teacherId, selectedClasses) {
+        const subjectsRef = ref(database, `classes`);
+        onValue(
+          subjectsRef,
+          (snapshot) => {
+            const classData = snapshot.val();
+            if (classData) {
+              const subjects = [];
+              selectedClasses.forEach((className) => {
+                const classSubjects = classData[className].subjects;
+                if (classSubjects) {
+                  subjects.push(...Object.keys(classSubjects));
+                }
+              });
+              renderSubjectOptions(subjects);
+            } else {
+              console.error("Class data not found");
+            }
+          },
+          (error) => {
+            console.error("Error fetching subject list:", error);
+          }
+        );
+      }
+
+      // Function to render subject options
       function renderSubjectOptions(subjects) {
         const subjectDropdown = document.getElementById("subjectDropdown");
         subjectDropdown.innerHTML = "";
 
         const option = document.createElement("option");
-        option.value = "";
+        option.value = ""; // Keep an empty value
         option.textContent = "Select a subject";
+        option.disabled = true; // Add the disabled attribute
+        option.selected = true; // Set this option as selected by default
         subjectDropdown.appendChild(option);
 
         subjects.forEach((subject) => {
@@ -120,23 +159,7 @@ function fetchSubjectList(teacherId, selectedClasses) {
           subjectDropdown.appendChild(option);
         });
       }
-            // Function to handle homework input and submission
-  function submitHomework(teacherId, subject) {
-    const homeworkInput = document.getElementById("homeworkInput").value;
-    if (homeworkInput.trim() !== "") {
-      const homeworkRef = ref(database, `teachers/${teacherId}/homework/${subject}`);
-      push(homeworkRef, homeworkInput)
-        .then(() => {
-          console.log("Homework submitted successfully");
-          document.getElementById("homeworkInput").value = "";
-        })
-        .catch((error) => {
-          console.error("Error submitting homework:", error);
-        });
-    } else {
-      console.error("Homework input cannot be empty");
-    }
-  }
+
       // Function to fetch student names based on selected classes and sections
       function fetchStudentNames(selectedClasses, selectedSections) {
         const usersRef = ref(database, "users");
@@ -164,18 +187,14 @@ function fetchSubjectList(teacherId, selectedClasses) {
 
       // Function to render student names
       function renderStudentNames(studentNames) {
-        const studentNamesContainer = document.getElementById(
-          "studentNamesContainer"
-        );
+        const studentNamesContainer = document.getElementById("studentNamesContainer");
         studentNamesContainer.innerHTML = "";
         for (const userId in studentNames) {
           const studentName = studentNames[userId];
           const studentLink = document.createElement("a");
           studentLink.href = "#";
           studentLink.textContent = studentName;
-          studentLink.addEventListener("click", () =>
-            fetchStudentSubjects(userId)
-          );
+          studentLink.addEventListener("click", () => fetchStudentSubjects(userId));
           const listItem = document.createElement("li");
           listItem.appendChild(studentLink);
           studentNamesContainer.appendChild(listItem);
@@ -204,9 +223,7 @@ function fetchSubjectList(teacherId, selectedClasses) {
 
       // Function to render subject links
       function renderSubjectLinks(subjects, userId) {
-        const subjectLinksContainer = document.getElementById(
-          "subjectLinksContainer"
-        );
+        const subjectLinksContainer = document.getElementById("subjectLinksContainer");
         subjectLinksContainer.innerHTML = "";
         for (const subject of subjects) {
           const subjectLink = document.createElement("a");
@@ -245,7 +262,6 @@ function fetchSubjectList(teacherId, selectedClasses) {
       }
 
       // Function to render image containers
-      // Function to render image containers
       function renderImageContainers(imageLinks) {
         const imageContainersContainer = document.getElementById(
           "imageContainersContainer"
@@ -266,7 +282,6 @@ function fetchSubjectList(teacherId, selectedClasses) {
           }
         }
       }
-      
     </script>
   </head>
   <body class="bg-gray-100">
@@ -277,7 +292,7 @@ function fetchSubjectList(teacherId, selectedClasses) {
         <h2 class="text-lg font-semibold mb-4">Select Subject</h2>
         <select id="subjectDropdown"></select>
       </div>
-  
+
       <!-- Homework Input -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Enter Homework</h2>
@@ -288,24 +303,24 @@ function fetchSubjectList(teacherId, selectedClasses) {
         ></textarea>
         <button
           class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-          onclick="submitHomework(/* Add teacherId and selected subject here */)"
+          id="submitHomeworkButton"
         >
           Submit Homework
         </button>
       </div>
-  
+
       <!-- Student Names -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Names</h2>
         <ul id="studentNamesContainer"></ul>
       </div>
-  
+
       <!-- Subject Links -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Subjects</h2>
         <ul id="subjectLinksContainer"></ul>
       </div>
-  
+
       <!-- Image Containers -->
       <div class="bg-white rounded-lg shadow-md p-4 mt-4">
         <h2 class="text-lg font-semibold mb-4">Student Images</h2>
