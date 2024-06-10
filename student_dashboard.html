@@ -3,11 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet"
-    />
+    <title>Teacher Dashboard</title>
+    <link rel="stylesheet" href="./style/style.css" />
+    <link href="./style/output.css" rel="stylesheet" />
     <script type="module">
       // Import the necessary Firebase modules
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -15,8 +13,7 @@
         getDatabase,
         ref,
         onValue,
-        set,
-        update,
+        push, // Import the push function
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
       import {
         getAuth,
@@ -25,7 +22,7 @@
       import {
         getStorage,
         ref as storageRef,
-        uploadBytesResumable,
+        listAll,
         getDownloadURL,
       } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
@@ -48,163 +45,297 @@
       const auth = getAuth(app);
       const storage = getStorage(app);
 
-      // Check if the user is logged in
+      // Check if the teacher is logged in
       onAuthStateChanged(auth, (user) => {
         if (user) {
-          const userId = user.uid;
-          displayDashboard(userId);
+          const teacherId = user.uid; // Get the teacher ID from the user object
+          console.log("Teacher logged in:", teacherId);
+          displayTeacherDashboard(teacherId);
         } else {
-          // User is not logged in, redirect to the login page
-          window.location.href = "login.html";
+          console.log("Teacher not logged in");
+          // Teacher is not logged in, redirect to the teacher login page
+          window.location.href = "teacher_login.html";
         }
       });
 
-      // Function to display the dashboard for the logged-in user
-      function displayDashboard(userId) {
-        const userRef = ref(database, `users/${userId}`);
-        onValue(userRef, (snapshot) => {
-          const userData = snapshot.val();
-          const classId = userData.class;
-          createSubjectNodes(userId, classId);
-          renderSubjectList(userId, classId);
-          renderContributionChart(userId);
-          renderTotalPoints(userId, classId);
-        });
-      }
-
-      // Function to create subject nodes under the user's homework node
-      function createSubjectNodes(userId, classId) {
-        const subjectsRef = ref(database, `classes/${classId}/subjects`);
-        onValue(subjectsRef, (snapshot) => {
-          const subjects = {};
-          snapshot.forEach((subjectSnapshot) => {
-            const subject = subjectSnapshot.val().name;
-            subjects[subject] = true;
-          });
-          const homeworkRef = ref(database, `users/${userId}/homework`);
-          update(homeworkRef, subjects);
-        });
-      }
-
-      // Function to render the subject list
-      function renderSubjectList(userId, classId) {
-        const subjectList = document.getElementById("subjectList");
-        const subjectsRef = ref(database, `classes/${classId}/subjects`);
-        onValue(subjectsRef, (snapshot) => {
-          subjectList.innerHTML = ""; // Clear the subject list first
-          snapshot.forEach((subjectSnapshot) => {
-            const subject = subjectSnapshot.val().name;
-            const li = document.createElement("li");
-            li.textContent = subject;
-            li.classList.add("subject-item");
-            li.addEventListener("click", () => {
-              openSubjectPage(userId, classId, subject);
-            });
-            subjectList.appendChild(li);
-          });
-        });
-      }
-
-      // Function to open the subject page
-      function openSubjectPage(userId, classId, subject) {
-        const modal = document.createElement("div");
-        modal.classList.add("fixed", "z-10", "inset-0", "overflow-y-auto");
-        modal.innerHTML = `
-                <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                    <div class="fixed inset-0 transition-opacity">
-                        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-                    </div>
-                    <span class="hidden sm:inline-block sm:align-middle sm:h-screen"></span>
-                    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
-                        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                            <div class="sm:flex sm:items-start">
-                                <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <svg class="h-6 w-6 text-blue-600" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                                    </svg>
-                                </div>
-                                <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
-                                        Submit Homework: ${subject}
-                                    </h3>
-                                    <div class="mt-2">
-                                        <input type="file" id="homeworkFile" class="mt-2 mb-4">
-                                        <button id="submitHomeworkBtn" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
-                                            Submit
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        document.body.appendChild(modal);
-
-        const submitHomeworkBtn = modal.querySelector("#submitHomeworkBtn");
-        submitHomeworkBtn.addEventListener("click", () => {
-          const homeworkFile = modal.querySelector("#homeworkFile").files[0];
-          submitHomework(userId, classId, subject, homeworkFile);
-          modal.remove();
-        });
+      function displayTeacherDashboard(teacherId) {
+        const teacherRef = ref(database, `teachers/${teacherId}`);
+        onValue(
+          teacherRef,
+          (snapshot) => {
+            const teacherData = snapshot.val();
+            if (teacherData && teacherData.classes_sections) {
+              console.log("Teacher data retrieved:", teacherData);
+              const selectedClasses = teacherData.classes_sections.classes;
+              const selectedSections = teacherData.classes_sections.sections;
+              fetchStudentNames(selectedClasses, selectedSections);
+              fetchSubjectList(teacherId, selectedClasses); // Call fetchSubjectList with teacherId and selectedClasses
+              setupSubmitHomeworkButton(teacherId); // Call the new function to set up the submit homework button
+            } else {
+              console.error("Teacher classes data not found");
+            }
+          },
+          (error) => {
+            console.error("Error retrieving teacher data:", error);
+          }
+        );
       }
 
       // Function to submit homework
-      function submitHomework(userId, classId, subject, file) {
-        const user = auth.currentUser;
-        if (user) {
+      function submitHomework(teacherId, subject) {
+        const homeworkInput = document.getElementById("homeworkInput").value;
+        if (homeworkInput.trim() !== "") {
           const homeworkRef = ref(
             database,
-            `users/${userId}/homework/${subject}`
+            `teachers/${teacherId}/homework/${subject}`
           );
-          const fileRef = storageRef(
-            storage,
-            `homework_img/${userId}/${subject}/${file.name}`
-          );
-          const uploadTask = uploadBytesResumable(fileRef, file);
-
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              // Handle upload progress
-            },
-            (error) => {
-              // Handle upload error
-              console.error("Error uploading file:", error);
-            },
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                const homeworkData = {
-                  fileURL: downloadURL,
-                  fileName: file.name,
-                  submittedAt: Date.now(),
-                };
-                update(homeworkRef, { [file.name]: homeworkData });
-                // Update points or any other logic if needed
-              });
-            }
-          );
+          push(homeworkRef, homeworkInput)
+            .then(() => {
+              console.log("Homework submitted successfully");
+              document.getElementById("homeworkInput").value = "";
+            })
+            .catch((error) => {
+              console.error("Error submitting homework:", error);
+            });
         } else {
-          // User is not authenticated, handle the error or redirect to the login page
-          console.error("User is not authenticated");
-          // Optionally, you can redirect to the login page here
+          console.error("Homework input cannot be empty");
         }
       }
-      
+
+      function setupSubmitHomeworkButton(teacherId) {
+        const submitHomeworkButton = document.getElementById(
+          "submitHomeworkButton"
+        );
+        const subjectDropdown = document.getElementById("subjectDropdown");
+
+        submitHomeworkButton.addEventListener("click", () => {
+          const selectedSubject = subjectDropdown.value;
+
+          if (selectedSubject === "") {
+            console.error("No subject selected");
+          } else {
+            submitHomework(teacherId, selectedSubject);
+          }
+        });
+      }
+
+      // Function to fetch the list of subjects
+      function fetchSubjectList(teacherId, selectedClasses) {
+        const subjectsRef = ref(database, `classes`);
+        onValue(
+          subjectsRef,
+          (snapshot) => {
+            const classData = snapshot.val();
+            if (classData) {
+              const subjects = [];
+              selectedClasses.forEach((className) => {
+                const classSubjects = classData[className].subjects;
+                if (classSubjects) {
+                  subjects.push(...Object.keys(classSubjects));
+                }
+              });
+              renderSubjectOptions(subjects);
+            } else {
+              console.error("Class data not found");
+            }
+          },
+          (error) => {
+            console.error("Error fetching subject list:", error);
+          }
+        );
+      }
+
+      // Function to render subject options
+      function renderSubjectOptions(subjects) {
+        const subjectDropdown = document.getElementById("subjectDropdown");
+        subjectDropdown.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.value = ""; // Keep an empty value
+        option.textContent = "Select a subject";
+        option.disabled = true; // Add the disabled attribute
+        option.selected = true; // Set this option as selected by default
+        subjectDropdown.appendChild(option);
+
+        subjects.forEach((subject) => {
+          const option = document.createElement("option");
+          option.value = subject;
+          option.textContent = subject;
+          subjectDropdown.appendChild(option);
+        });
+      }
+
+      // Function to fetch student names based on selected classes and sections
+      function fetchStudentNames(selectedClasses, selectedSections) {
+        const usersRef = ref(database, "users");
+        onValue(
+          usersRef,
+          (snapshot) => {
+            const usersData = snapshot.val();
+            const studentNames = {};
+            for (const userId in usersData) {
+              const user = usersData[userId];
+              if (
+                selectedClasses.includes(user.class) &&
+                selectedSections.includes(user.section)
+              ) {
+                studentNames[userId] = user.username;
+              }
+            }
+            renderStudentNames(studentNames);
+          },
+          (error) => {
+            console.error("Error fetching student names:", error);
+          }
+        );
+      }
+
+      // Function to render student names
+      function renderStudentNames(studentNames) {
+        const studentNamesContainer = document.getElementById(
+          "studentNamesContainer"
+        );
+        studentNamesContainer.innerHTML = "";
+        for (const userId in studentNames) {
+          const studentName = studentNames[userId];
+          const studentLink = document.createElement("a");
+          studentLink.href = "#";
+          studentLink.textContent = studentName;
+          studentLink.addEventListener("click", () =>
+            fetchStudentSubjects(userId)
+          );
+          const listItem = document.createElement("li");
+          listItem.appendChild(studentLink);
+          studentNamesContainer.appendChild(listItem);
+        }
+      }
+
+      // Function to fetch student subjects
+      function fetchStudentSubjects(userId) {
+        const userRef = ref(database, `users/${userId}/homework`);
+        onValue(
+          userRef,
+          (snapshot) => {
+            const userHomework = snapshot.val();
+            if (userHomework) {
+              const subjects = Object.keys(userHomework);
+              renderSubjectLinks(subjects, userId);
+            } else {
+              console.error("Student homework data not found");
+            }
+          },
+          (error) => {
+            console.error("Error fetching student subjects:", error);
+          }
+        );
+      }
+
+      // Function to render subject links
+      function renderSubjectLinks(subjects, userId) {
+        const subjectLinksContainer = document.getElementById(
+          "subjectLinksContainer"
+        );
+        subjectLinksContainer.innerHTML = "";
+        for (const subject of subjects) {
+          const subjectLink = document.createElement("a");
+          subjectLink.href = "#";
+          subjectLink.textContent = subject;
+          subjectLink.addEventListener("click", () =>
+            fetchStudentImages(userId, subject)
+          );
+          const listItem = document.createElement("li");
+          listItem.appendChild(subjectLink);
+          subjectLinksContainer.appendChild(listItem);
+        }
+      }
+
+      // Function to fetch student images
+      function fetchStudentImages(userId, subject) {
+        const storagePathRef = storageRef(
+          storage,
+          `homework_img/${userId}/${subject}`
+        );
+        listAll(storagePathRef)
+          .then((res) => {
+            const imageLinks = [];
+            const promises = res.items.map((item) =>
+              getDownloadURL(item).then((url) => imageLinks.push(url))
+            );
+            Promise.all(promises)
+              .then(() => renderImageContainers(imageLinks))
+              .catch((error) => {
+                console.error("Error fetching image URLs:", error);
+              });
+          })
+          .catch((error) => {
+            console.error("Error fetching student images:", error);
+          });
+      }
+
+      // Function to render image containers
+      function renderImageContainers(imageLinks) {
+        const imageContainersContainer = document.getElementById(
+          "imageContainersContainer"
+        );
+        imageContainersContainer.innerHTML = "";
+        if (imageLinks.length === 0) {
+          const noImagesMessage = document.createElement("p");
+          noImagesMessage.textContent = "No images found for this subject.";
+          imageContainersContainer.appendChild(noImagesMessage);
+        } else {
+          for (const imageLink of imageLinks) {
+            const imageContainer = document.createElement("div");
+            const image = document.createElement("img");
+            image.src = imageLink;
+            image.alt = "Student Image";
+            imageContainer.appendChild(image);
+            imageContainersContainer.appendChild(imageContainer);
+          }
+        }
+      }
     </script>
   </head>
   <body class="bg-gray-100">
-    <!-- Navbar -->
-    <!-- ... -->
-
     <!-- Main content -->
     <div class="container mx-auto mt-8 p-4">
-      <!-- Subject points section --> 
+      <!-- Subject Dropdown -->
       <div class="bg-white rounded-lg shadow-md p-4">
-        <h2 class="text-lg font-semibold mb-4">Subjects</h2>
-        <ul id="subjectList" class="grid grid-cols-3 gap-4">
-          <!-- Subject list will be rendered here -->
-        </ul>
+        <h2 class="text-lg font-semibold mb-4">Select Subject</h2>
+        <select id="subjectDropdown"></select>
+      </div>
+
+      <!-- Homework Input -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Enter Homework</h2>
+        <textarea
+          id="homeworkInput"
+          class="w-full p-2 border border-gray-300 rounded-md"
+          rows="4"
+        ></textarea>
+        <button
+          class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+          id="submitHomeworkButton"
+        >
+          Submit Homework
+        </button>
+      </div>
+
+      <!-- Student Names -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Student Names</h2>
+        <ul id="studentNamesContainer"></ul>
+      </div>
+
+      <!-- Subject Links -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Student Subjects</h2>
+        <ul id="subjectLinksContainer"></ul>
+      </div>
+
+      <!-- Image Containers -->
+      <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+        <h2 class="text-lg font-semibold mb-4">Student Images</h2>
+        <div id="imageContainersContainer" class="flex flex-wrap"></div>
       </div>
     </div>
   </body>
